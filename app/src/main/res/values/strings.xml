@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">EnergyMonitor</string>
+    <string name="URLNotificationHint">Url de notificación</string>
+    <string name="NotificationURLText">Url de notificación</string>
+    <string name="NotificationIntervalSeconds">Intervalo de notificación</string>
+    <string name="NotificationKey">Clave</string>
+    <string name="NotificationIntervalHint">Intervalo de notificación, en segundos</string>
+</resources>
