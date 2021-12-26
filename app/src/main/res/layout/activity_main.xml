@@ -93,7 +93,6 @@
         android:id="@+id/logScroll"
         android:layout_width="411dp"
         android:layout_height="0dp"
-        app:layout_constraintBottom_toTopOf="@+id/pauseLogButton"
         app:layout_constraintTop_toBottomOf="@+id/tableLayout">
 
 
@@ -113,19 +112,6 @@
         </LinearLayout>
 
     </ScrollView>
-
-    <ToggleButton
-        android:id="@+id/pauseLogButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Detener traza"
-        android:textOff="Activar traza"
-        android:textOn="Detener traza"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/logScroll" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>
