@@ -6,85 +6,24 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <TextView
-        android:id="@+id/batteryStatusText"
-        android:layout_width="411dp"
-        android:layout_height="wrap_content"
-        android:text="TextView"
-        android:textSize="34sp"
-        app:layout_constraintBottom_toTopOf="@+id/tableLayout"
-        app:layout_constraintTop_toTopOf="parent" />
-
 
     <TableLayout
         android:id="@+id/tableLayout"
         android:layout_width="411dp"
         android:layout_height="wrap_content"
-        app:layout_constraintBottom_toTopOf="@+id/logScroll"
-        app:layout_constraintTop_toBottomOf="@+id/batteryStatusText">
+        app:layout_constraintBottom_toTopOf="@+id/logScroll">
 
         <TableRow
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
-
-            <TextView
-                android:id="@+id/textView1"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/NotificationURLText" />
-
-            <EditText
-                android:id="@+id/notificationURLText"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:ems="10"
-                android:hint="@string/URLNotificationHint"
-                android:inputType="textUri" />
-
-        </TableRow>
+            android:layout_height="match_parent"/>
 
         <TableRow
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
-
-            <TextView
-                android:id="@+id/textView2"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/NotificationIntervalSeconds" />
-
-            <EditText
-                android:id="@+id/notificationIntervalText"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:ems="10"
-                android:hint="@string/NotificationIntervalHint"
-                android:inputType="numberDecimal" />
-
-        </TableRow>
+            android:layout_height="match_parent"/>
 
         <TableRow
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
-
-            <TextView
-                android:id="@+id/textView3"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/NotificationKey" />
-
-            <EditText
-                android:id="@+id/notificationKeyText"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:ems="10"
-                android:inputType="textPassword"
-                android:text="@string/URLNotificationHint" />
-
-        </TableRow>
+            android:layout_height="match_parent"/>
 
     </TableLayout>
 

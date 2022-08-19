@@ -1,5 +1,6 @@
 package agonzalez.energymonitor.bot
 
+
 import agonzalez.energymonitor.MainActivity
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -9,161 +10,165 @@ import android.content.Intent
 
 import android.content.IntentFilter
 import android.util.Log
-import android.widget.Toast
-import androidx.work.*
-import java.util.concurrent.TimeUnit
-import androidx.work.NetworkType
+
 import android.app.AlarmManager
 
 import android.app.PendingIntent
 
-import android.app.IntentService
+
 import android.app.PendingIntent.FLAG_ONE_SHOT
 import android.app.PendingIntent.FLAG_UPDATE_CURRENT
 import android.content.Context.ALARM_SERVICE
+import android.content.Context.POWER_SERVICE
+import android.os.PowerManager
 import androidx.core.content.ContextCompat.getSystemService
+
 import java.time.Duration
+import java.util.*
+import kotlin.collections.HashSet
 
 
 typealias BotLogger = (String) -> Unit
 
-
-public class EnergyBot(context:Context) {
-
-
-    val chatIds = HashSet<Long>()
-
-    var lastBatteryInfo : BatteryInfo? = null
+public class EnergyBot(val context:Context) {
 
 
+    var _wakeLock : PowerManager.WakeLock? = null
+    private val chatIds = HashSet<Long>()
+
+    private val MAX_BATTERYINFO = 40
 
 
-    val bot = PengradBot { msg ->
+    private val batteryInfoLRU = ArrayList<BatteryInfo>()
+
+
+    fun registerNewBatteryInfo(filter:Boolean) : BatteryInfo {
+        Log.d(TAG, "RegisterBattery $filter", Throwable())
+        val ret = getBatteryInfo(context)
+        if( filter && !batteryInfoLRU.isEmpty()){
+            val previous = batteryInfoLRU.last()
+            if( previous.plugged == ret.plugged && previous.charging == ret.charging ) {
+                return ret
+            }
+        }
+        batteryInfoLRU.add( ret )
+        if( batteryInfoLRU.size > MAX_BATTERYINFO ){
+            batteryInfoLRU.removeAt(0)
+        }
+        addToLogText("register battery:$ret")
+        return ret
+    }
+
+    fun lastBatteryInfo() : BatteryInfo{
+        return batteryInfoLRU.last();
+    }
+
+    val pengradBot = PengradBot { msg ->
         Log.d(TAG,"Enviando por telegram:$msg")
         val chatId = msg.chatId
-        chatIds.add(chatId)
+        chatIds += chatId
+        registerNewBatteryInfo(false)
         val response =
-            "Desde energybot\n chatIds:${chatIds.toString()}\n ${msg}\n${getBatteryInfo(context)}"
+            """Desde energybot
+               chatIds:${chatIds.toString()}
+               msg: ${msg}
+               Lista de información de batería:${batteryInfoLRU.joinToString("\n","\n")}
+            """.replaceIndent("  ")
         Log.d(TAG,response)
+        addToLogText("\n\nToClient $chatId:\n" + response)
         response
     }
 
     init {
         Log.d(TAG,"Constructor de EnergyBot")
-        registerForPowerChanges(context)
-        setupAlarm(context)
-        lastBatteryInfo = getBatteryInfo(context)
-        chatIds += 236278140
+        chatIds += NotAddedToGit.defaultChatId
+        setup()
+        sendStatusToClients("Arrancado el bot");
     }
 
-    class EnergyBootReceiver : BroadcastReceiver(){
-        val TAG = "EnergyBootReceiver"
-        init{
-            Log.d(TAG, "Receiver  creado")
-        }
-        override fun onReceive(contextP: Context?, intent: Intent?) {
-            Log.d(TAG,"**************************************** Ha pasado algo con boot receiver: $intent")
-            Log.d(TAG,"**************************************** Ha pasado algo con boot receiver: $intent")
-            Log.d(TAG,"**************************************** Ha pasado algo con boot receiver: $intent")
-            Log.d(TAG,"**************************************** Ha pasado algo con boot receiver: $intent")
-            Log.d(TAG,"**************************************** Ha pasado algo con boot receiver: $intent")
-            Log.d(TAG,"**************************************** Ha pasado algo con boot receiver: $intent")
+    private fun setup(){
 
-            Log.d(TAG, "onReceive:$intent")
-            val context = contextP?.applicationContext!!
-            val bot = EnergyBot.getInstance(context)
-            bot.setupAlarm(context)
-            val info = EnergyBot.getBatteryInfo(context)
-            val msg = "\uD83C\uDF1F Desde boot\n$info"
-            bot.sendStatusToClients(msg)
-            bot.registerForPowerChanges(context)
-        }
-
+        registerForPowerChanges()
+        setupAlarm()
+        registerNewBatteryInfo(false)
+        adquireWakeLock()
     }
 
 
-    class EnergyAlarmReceiver : BroadcastReceiver() {
-        val TAG = "EnergyAlarmReceiver"
-        init{
-            Log.d(TAG, "Receiver  creado")
-        }
-        override fun onReceive(context: Context, intent: Intent) {
-            val extras = intent.extras!!
-            val extrasS = extras.keySet().joinToString(",") { k -> k + ":" + extras[k] }
-            Log.d(TAG, "onReceive:$intent ${extrasS}")
-            val bot = EnergyBot.getInstance(context)
-            bot.setupAlarm(context)
-            val info = EnergyBot.getBatteryInfo(context)
-            val msg = "⏰ Desde la alarma\n$info"
-            bot.sendStatusToClients(msg)
-            bot.registerForPowerChanges(context)
+
+    private fun adquireWakeLock(){
+        addToLogText("comprobando wakelock")
+        if( _wakeLock == null ) {
+            val powerManager = context.getSystemService(POWER_SERVICE) as PowerManager
+            _wakeLock = powerManager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK, "energybot:perpetual-wake-lock"
+            )
+            _wakeLock!!.acquire()
+            addToLogText("wakelock adquirido")
         }
     }
 
-    val alarmInterval = Duration.ofHours(24).toMillis()
-    //val alarmInterval = Duration.ofSeconds(10).toMillis()
 
-    private fun setupAlarm(context: Context) {
+
+    fun setupAlarm() : Date {
         Log.d(TAG, "poniendo alarma" )
         val alarmManager = context.getSystemService(ALARM_SERVICE) as AlarmManager
-        val alarmIntent = Intent(context, EnergyAlarmReceiver::class.java)
+        val alarmIntent = Intent(context, AlarmReceiver::class.java)
         val pendingIntent = PendingIntent.getBroadcast(context, 0, alarmIntent, FLAG_ONE_SHOT or FLAG_UPDATE_CURRENT )
         //alarmManager.setInexactRepeating(AlarmManager.RTC_WAKEUP, 1000, 10000, pendingIntent)
-        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,System.currentTimeMillis()+alarmInterval,pendingIntent)
+        val next = Date( System.currentTimeMillis() + tick );
+        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,System.currentTimeMillis()+tick,pendingIntent)
+        Log.d(TAG, "La alarma se ha puesto a:$next")
+        return next
     }
 
 
     public fun sendStatusToClients(msg: String){
         Log.d(TAG, "sendStatusToClients")
+        addToLogText("\n\nToClients:\n" + msg)
         val thread = Thread{
             Log.d(TAG, "sendStatusToClients:${this}")
             chatIds.forEach { chatId ->
                 Log.d(TAG, "valor de chatId:${chatId}")
-                bot.sendMessage(MessageInfo(chatId, chatId, msg))
+                pengradBot.sendMessage(MessageInfo(chatId, chatId, msg))
             }
         }
         thread.start()
     }
 
-    private fun registerForPowerChanges(context: Context) {
+    private fun registerForPowerChanges() {
         val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
-        val receiver = object : BroadcastReceiver() {
-            val TAG = "EnergyBot-powerReceiver"
-            override fun onReceive(context: Context?, intent: Intent?) {
-                Log.d(TAG, "Receiver del bot")
-                val info = getBatteryInfo(context!!)
-                if( !info.plugged ) {
-                    val msg =
-                        "\uD83D\uDCA9 HA PASADO ALGO MALO CON LA CORRIENTE: $info"
-                    sendStatusToClients(msg)
-                }
-                if( !lastBatteryInfo!!.plugged && info.plugged ){
-                    val msg =
-                        "\uD83D\uDE00 Parece que ha vuelto la corriente: $info"
-                    sendStatusToClients(msg)
-                }
-                lastBatteryInfo = info
-            }
-        }
-
+        val receiver = PowerReceiver()
         context.applicationContext.registerReceiver(receiver, filter)
     }
 
     data class BatteryInfo(val percentage: Float, val charging: Boolean, val plugged: Boolean ){
+        val date = Date()
+
         override fun toString(): String {
             return """
-                percentage:$percentage
-                charging: $charging
-                plugged: $plugged
+                date: $date
+               percentage: $percentage
+               plugged: $plugged
             """.replaceIndent("  ")
         }
     }
 
     companion object {
 
+        val alarmInterval = Duration.ofMinutes(6).toMillis() //Duration.ofHours(24).toMillis()
+        var lastAlarm = System.currentTimeMillis() - alarmInterval
+        val tick = Duration.ofMinutes(5).toMillis()
+
+
+
+
         val TAG = "EnergyBot"
 
         private var botInstance: EnergyBot? = null
+
+
+
 
         fun getInstance(context:Context) : EnergyBot {
             if(botInstance == null) {
@@ -172,12 +177,18 @@ public class EnergyBot(context:Context) {
             return botInstance!!
         }
 
+        fun addToLogText(msg: String ) {
+            if (MainActivity.instance != null) {
+                (MainActivity.instance as MainActivity).addToLogText(msg);
+            }
+        }
+
 
         fun getBatteryInfo(context: Context): BatteryInfo {
             val batteryIntent: Intent? =
                 context.applicationContext.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
             val level = batteryIntent!!.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
-            val scale = batteryIntent!!.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+            val scale = batteryIntent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
             val status = batteryIntent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
             val plugged = batteryIntent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1)
 
@@ -188,10 +199,6 @@ public class EnergyBot(context:Context) {
 
             return BatteryInfo(level.toFloat() / scale.toFloat() * 100.0f, isCharging, isPlugged)
         }
-    }
-
-    fun sendMessage(msg: MessageInfo): String {
-        return bot.sendMessage(msg)
     }
 
 }

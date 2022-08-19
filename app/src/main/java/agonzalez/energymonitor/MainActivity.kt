@@ -25,7 +25,7 @@ class MainActivity : AppCompatActivity() {
     var _logText: TextView? = null
     var _logScroll: ScrollView? = null
     var _handler: Handler? = null
-    var _wakeLock : WakeLock? = null
+
 
 
     public fun addToLogText(msg: String) {
@@ -40,7 +40,6 @@ class MainActivity : AppCompatActivity() {
 
 
     private val _logPeriod: Long = 1000L * 60 * 24
-    private var _bot: EnergyBot? = null
 
 
     private fun initBindings(){
@@ -57,22 +56,10 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         initBindings()
-        adquireWakeLock()
-        EnergyBot.getInstance(applicationContext)
+        val bot = EnergyBot.getInstance(applicationContext)
+        bot.sendStatusToClients("▶ onCreate")
     }
 
-
-    private fun adquireWakeLock(){
-        addToLogText("comprobando wakelock")
-        if( _wakeLock == null ) {
-            val powerManager = getSystemService(POWER_SERVICE) as PowerManager
-            _wakeLock = powerManager.newWakeLock(
-                PowerManager.PARTIAL_WAKE_LOCK, "perpetual-wake-lock"
-            )
-            _wakeLock!!.acquire()
-            addToLogText("wakelock adquirido")
-        }
-    }
 
     companion object {
         var instance: MainActivity? = null;

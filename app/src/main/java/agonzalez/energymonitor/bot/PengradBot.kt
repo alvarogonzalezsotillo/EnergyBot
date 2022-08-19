@@ -4,9 +4,6 @@ import com.pengrad.telegrambot.TelegramBot
 import com.pengrad.telegrambot.UpdatesListener
 import com.pengrad.telegrambot.model.Message
 import com.pengrad.telegrambot.request.SendMessage
-import com.pengrad.telegrambot.response.SendResponse
-
-import com.pengrad.telegrambot.model.request.ForceReply
 
 
 
@@ -14,7 +11,7 @@ import com.pengrad.telegrambot.model.request.ForceReply
 
 typealias messageHandler = (MessageInfo) -> String
 
-data class MessageInfo(val chatId: Long, val userId: Long, val text: String )
+data class MessageInfo(val chatId: Long, val userId: Long?, val text: String )
 
 public class PengradBot(private val handler: messageHandler) {
 
@@ -23,7 +20,7 @@ public class PengradBot(private val handler: messageHandler) {
         bot.setUpdatesListener{ updates ->
             updates.forEach{ update ->
                 if( update == null ){
-                    throw Error("El mensaje era null")
+                    throw Error("Unexpected null update")
                 }
                 val message = update.message()
                 if( message != null ) {
@@ -31,11 +28,10 @@ public class PengradBot(private val handler: messageHandler) {
                     val userId = message.from().id()
                     val text = message.text()
                     val response = handler( MessageInfo(chatId, userId, text) )
-                    val sendMessage = SendMessage(chatId, response)
-                    bot.execute(sendMessage)
+                    sendMessage(MessageInfo(chatId, null, response ))
                 }
             }
-            return@setUpdatesListener UpdatesListener.CONFIRMED_UPDATES_ALL
+            UpdatesListener.CONFIRMED_UPDATES_ALL
         }
     }
 
@@ -45,10 +41,5 @@ public class PengradBot(private val handler: messageHandler) {
         val ok = sendResponse.isOk
         val message: Message? = sendResponse.message()
         return "ok:$ok message:$message"
-    }
-
-
-    fun getBotUsername(): String {
-        return "energy_chilo_bot"
     }
 }
