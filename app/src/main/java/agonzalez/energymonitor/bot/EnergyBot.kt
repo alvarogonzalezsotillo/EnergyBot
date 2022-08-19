@@ -146,10 +146,11 @@ public class EnergyBot(val context:Context) {
         val date = Date()
 
         override fun toString(): String {
+            val thumb = if(plugged) "👍" else "👎"
             return """
-                date: $date
+               date: 📅 $date
                percentage: $percentage
-               plugged: $plugged
+               plugged: $thumb $plugged
             """.replaceIndent("  ")
         }
     }
