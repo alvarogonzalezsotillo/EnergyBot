@@ -22,6 +22,7 @@ import android.content.Context.ALARM_SERVICE
 import android.content.Context.POWER_SERVICE
 import android.os.PowerManager
 import androidx.core.content.ContextCompat.getSystemService
+import java.text.SimpleDateFormat
 
 import java.time.Duration
 import java.util.*
@@ -43,7 +44,7 @@ public class EnergyBot(val context:Context) {
 
 
     fun registerNewBatteryInfo(filter:Boolean) : BatteryInfo {
-        Log.d(TAG, "RegisterBattery $filter", Throwable())
+        Log.d(TAG, "RegisterBattery $filter" )
         val ret = getBatteryInfo(context)
         if( filter && !batteryInfoLRU.isEmpty()){
             val previous = batteryInfoLRU.last()
@@ -142,13 +143,15 @@ public class EnergyBot(val context:Context) {
         context.applicationContext.registerReceiver(receiver, filter)
     }
 
+
     data class BatteryInfo(val percentage: Float, val charging: Boolean, val plugged: Boolean ){
         val date = Date()
 
         override fun toString(): String {
-            val thumb = if(plugged) "👍" else "👎"
+            val thumb = if(plugged) "👍\uD83C\uDF1F" else "👎\uD83D\uDCA9"
             return """
-               date: 📅 $date
+                
+               date: 📅 ${EnergyBot.dateFormat.format(date)}
                percentage: $percentage
                plugged: $thumb $plugged
             """.replaceIndent("  ")
@@ -157,9 +160,11 @@ public class EnergyBot(val context:Context) {
 
     companion object {
 
-        val alarmInterval = Duration.ofMinutes(6).toMillis() //Duration.ofHours(24).toMillis()
+        val dateFormat = SimpleDateFormat("YYYY-MM-dd HH:mm")
+
+        val alarmInterval = Duration.ofHours(24).toMillis() //Duration.ofHours(24).toMillis()
         var lastAlarm = System.currentTimeMillis() - alarmInterval
-        val tick = Duration.ofMinutes(5).toMillis()
+        val tick = Duration.ofMinutes(60).toMillis()
 
 
 
